@@ -41,6 +41,7 @@ func breakWords(s string) []string {
 	for i, r := range s {
 		// Space
 		if i > 0 && r != ' ' && s[i-1] == ' ' {
+			// push word into results & clear word
 			results = append(results, string(word))
 			word = []rune{r}
 			continue
@@ -50,9 +51,19 @@ func breakWords(s string) []string {
 		if unicode.In(r, unicode.Han) {
 			// break left
 			if len(word) > 0 {
+				// push 字 into results & clear word
 				results = append(results, string(word))
 				word = []rune{}
 			}
+			word = append(word, r)
+			continue
+		}
+
+		if unicode.In(r, unicode.Latin) && len(word) > 0 && unicode.In(word[len(word)-1], unicode.Han) {
+			// push 字 into results & clear word
+			results = append(results, string(word))
+			word = []rune{}
+
 			word = append(word, r)
 			continue
 		}

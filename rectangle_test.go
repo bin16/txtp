@@ -10,6 +10,7 @@ import (
 
 func TestDrawRectangle(t *testing.T) {
 	msk := New(256, 256)
+	msk.SetHexColor("#000")
 	msk.FillRectangle(0, 0, 256, 256)
 	msk.ClearRectangle(64, 64, 128, 128)
 	msk.SavePNG("example-msk.png")
