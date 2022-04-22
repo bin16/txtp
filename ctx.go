@@ -16,9 +16,10 @@ type Context struct {
 	width, height int
 	face          font.Face
 	color         color.Color
-	image         *image.RGBA
+	image         *image.NRGBA
 	mask          *image.Alpha
 	lineHeight    float64
+	strokeWidth   int
 }
 
 func (ctx *Context) SetFontFace(face font.Face) {
@@ -29,13 +30,17 @@ func (ctx *Context) SetColor(clr color.Color) {
 	ctx.color = clr
 }
 
+func (ctx *Context) SetLineWidth(d int) {
+	ctx.strokeWidth = d
+}
+
 func (ctx *Context) SetMask(m *image.Alpha) {
 	ctx.mask = m
 }
 
 func (ctx *Context) SetHexColor(s string) {
 	r, g, b, a := parseHexColor(s)
-	ctx.color = color.RGBA{r, g, b, a}
+	ctx.color = color.NRGBA{r, g, b, a}
 }
 
 // ---------------- Strings ----------------
@@ -168,19 +173,44 @@ func (ctx *Context) Image() image.Image {
 }
 
 func New(w, h int) *Context {
-	ctx := &Context{
-		image:      image.NewRGBA(image.Rect(0, 0, w, h)),
-		face:       nil,
-		width:      w,
-		height:     h,
-		color:      color.Black,
-		lineHeight: 1.5,
-	}
+	return FromImage(image.NewRGBA(image.Rect(0, 0, w, h)))
+}
 
-	return ctx
+func FromImage(img image.Image) *Context {
+	w := img.Bounds().Dx()
+	h := img.Bounds().Dy()
+	tmp := image.NewNRGBA(image.Rect(0, 0, w, h))
+	draw.Draw(tmp, tmp.Rect, img, image.Pt(0, 0), draw.Src)
+
+	return &Context{
+		image:       tmp,
+		face:        nil,
+		width:       w,
+		height:      h,
+		color:       color.Black,
+		lineHeight:  1.5,
+		strokeWidth: 1,
+	}
 }
 
 // ---------------- Rectangle ----------------
 func (ctx *Context) FillRectangle(x, y, w, h int) {
 	draw.Draw(ctx.image, image.Rect(x, y, x+w, y+h), image.NewUniform(ctx.color), image.Pt(0, 0), draw.Over)
+	if ctx.mask != nil {
+		draw.DrawMask(ctx.image, image.Rect(x, y, x+w, y+h), image.NewUniform(ctx.color), image.Pt(x, y), ctx.mask, image.Pt(0, 0), draw.Over)
+		return
+	}
+}
+
+func (ctx *Context) ClearRectangle(x, y, w, h int) {
+	draw.Draw(ctx.image, image.Rect(x, y, x+w, y+h), image.NewUniform(color.NRGBA{}), image.Pt(0, 0), draw.Src)
+}
+
+func (ctx *Context) StrokeRectangle(x, y, w, h int) {
+	tmp := New(ctx.width, ctx.height)
+	tmp.SetColor(ctx.color)
+	tmp.FillRectangle(x, y, w, h)
+	tmp.ClearRectangle(x+ctx.strokeWidth, y+ctx.strokeWidth, w-ctx.strokeWidth*2, h-ctx.strokeWidth*2)
+
+	ctx.DrawImage(tmp.Image(), 0, 0)
 }
